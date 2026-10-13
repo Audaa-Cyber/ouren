@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, AppState, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFonts, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 
 const STORAGE = 'ouren.local.v2';
-const DEFAULT_SLEEP = { enabled:false, bedtimeHour:22, bedtimeMinute:0, wakeHour:7, wakeMinute:0 };
 const LOGO_URL = 'https://raw.githubusercontent.com/Audaa-Cyber/ouren/main/assets/ouren-logo.png';
 const C = { paper:'#F2EEE7', white:'#F8F5EF', ink:'#20201D', muted:'#89867E', line:'#DED9D0', sand:'#D5CCBE', night:'#191A17', panel:'#282925', darkMuted:'#AAA69C' };
 const MOUNTAIN = 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1100&q=88';
@@ -69,8 +68,7 @@ export default function App() {
   const [dark,setDark] = useState(false);
   const [notifications,setNotifications] = useState(true);
   const [focusLength,setFocusLength] = useState(25);
-  const [sleepSchedule,setSleepSchedule] = useState(DEFAULT_SLEEP);
-  const [sleepSaving,setSleepSaving] = useState(false);
+  const [timerEndsAt,setTimerEndsAt] = useState(null);
   const [seconds,setSeconds] = useState(1500);
   const [running,setRunning] = useState(false);
   const [mode,setMode] = useState('Focus');
@@ -83,10 +81,27 @@ export default function App() {
   const [name,setName] = useState('');
   const [email,setEmail] = useState('');
   const timer = useRef(null);
+  const completedTimerRef = useRef(false);
 
-  useEffect(()=>{(async()=>{try{const raw=await AsyncStorage.getItem(STORAGE);if(raw){const d=JSON.parse(raw);setProfile(d.profile||null);setTasks(Array.isArray(d.tasks)?d.tasks:initialTasks);setDark(!!d.dark);setNotifications(d.notifications!==false);setFocusLength(d.focusLength||25);setSeconds(d.seconds??(d.focusLength||25)*60);setSleepSchedule({...DEFAULT_SLEEP,...(d.sleepSchedule||{})});setOnboarding(d.profile?4:0);}}catch(e){console.warn('Restore failed',e);}finally{setReady(true);}})();},[]);
-  useEffect(()=>{if(ready&&profile)AsyncStorage.setItem(STORAGE,JSON.stringify({profile,tasks,dark,notifications,focusLength,seconds,sleepSchedule})).catch(e=>console.warn('Save failed',e));},[ready,profile,tasks,dark,notifications,focusLength,seconds]);
-  useEffect(()=>{if(running){timer.current=setInterval(()=>setSeconds(v=>{if(v<=1){clearInterval(timer.current);setRunning(false);Alert.alert('Session complete','Take a breath. You made space for what matters.');return 0;}return v-1;}),1000);}else if(timer.current)clearInterval(timer.current);return()=>timer.current&&clearInterval(timer.current);},[running]);
+  useEffect(()=>{(async()=>{try{const raw=await AsyncStorage.getItem(STORAGE);if(raw){const d=JSON.parse(raw);setProfile(d.profile||null);setTasks(Array.isArray(d.tasks)?d.tasks:initialTasks);setDark(!!d.dark);setNotifications(d.notifications!==false);setFocusLength(d.focusLength||25);setSeconds(d.timerRunning&&d.timerEndsAt?Math.max(0,Math.ceil((d.timerEndsAt-Date.now())/1000)):(d.seconds??(d.focusLength||25)*60));setRunning(!!(d.timerRunning&&d.timerEndsAt>Date.now()));setTimerEndsAt(d.timerRunning&&d.timerEndsAt>Date.now()?d.timerEndsAt:null);setOnboarding(d.profile?4:0);}}catch(e){console.warn('Restore failed',e);}finally{setReady(true);}})();},[]);
+  useEffect(()=>{if(ready&&profile)AsyncStorage.setItem(STORAGE,JSON.stringify({profile,tasks,dark,notifications,focusLength,seconds,timerRunning:running,timerEndsAt})).catch(e=>console.warn('Save failed',e));},[ready,profile,tasks,dark,notifications,focusLength,seconds,running,timerEndsAt]);
+  useEffect(()=>{
+    if(!running||!timerEndsAt)return undefined;
+    const updateRemaining=()=>{
+      const remaining=Math.max(0,Math.ceil((timerEndsAt-Date.now())/1000));
+      setSeconds(remaining);
+      if(remaining===0&&!completedTimerRef.current){
+        completedTimerRef.current=true;
+        setRunning(false);
+        setTimerEndsAt(null);
+        Alert.alert('Session complete','Take a breath. You made space for what matters.');
+      }
+    };
+    updateRemaining();
+    timer.current=setInterval(updateRemaining,250);
+    const subscription=AppState.addEventListener('change',state=>{if(state==='active')updateRemaining();});
+    return()=>{if(timer.current)clearInterval(timer.current);subscription.remove();};
+  },[running,timerEndsAt]);
   const today = new Date();
   const shownMonth = new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
   const monthDays = useMemo(()=>{const first=new Date(shownMonth.getFullYear(),shownMonth.getMonth(),1).getDay();const count=new Date(shownMonth.getFullYear(),shownMonth.getMonth()+1,0).getDate();return [...Array(first).fill(null),...Array.from({length:count},(_,i)=>i+1)];},[monthOffset,ready]);
@@ -100,54 +115,19 @@ export default function App() {
   const toggleTask=id=>setTasks(prev=>prev.map(t=>t.id===id?{...t,done:!t.done}:t));
   const openProfile=()=>{setName(profile?.name||'');setEmail(profile?.email||'');setEditModal(true);};
   const saveEditedProfile=()=>{if(!name.trim())return;setProfile({name:name.trim(),email:email.trim()});setEditModal(false);};
-  const resetTimer=()=>{setRunning(false);setSeconds(focusLength*60);};
-  const updateSleepTime=(key,delta)=>{
-    setSleepSchedule(prev=>{
-      const total=((prev[key+'Hour']||0)*60+(prev[key+'Minute']||0)+delta+1440)%1440;
-      return {...prev,[key+'Hour']:Math.floor(total/60),[key+'Minute']:total%60};
-    });
-  };
-  const formatSleepTime=(hour,minute)=>{
-    const h=hour%12||12;
-    return String(h).padStart(2,'0')+':'+String(minute).padStart(2,'0')+' '+(hour>=12?'PM':'AM');
-  };
-  const saveSleepSchedule=async()=>{
-    setSleepSaving(true);
-    try {
-      const existing=await Notifications.getAllScheduledNotificationsAsync();
-      await Promise.all(existing.filter(n=>n.content?.data?.ourenSleepReminder).map(n=>Notifications.cancelScheduledNotificationAsync(n.identifier)));
-      if(sleepSchedule.enabled){
-        const permission=await Notifications.getPermissionsAsync();
-        const granted=permission.granted||permission.ios?.status===Notifications.IosAuthorizationStatus.PROVISIONAL;
-        const finalPermission=granted?permission:await Notifications.requestPermissionsAsync();
-        const allowed=finalPermission.granted||finalPermission.ios?.status===Notifications.IosAuthorizationStatus.PROVISIONAL;
-        if(!allowed){
-          Alert.alert('Reminders are off','Allow notifications in your device settings to receive sleep reminders. Your schedule will still be saved.');
-          setSleepSchedule(prev=>({...prev,enabled:false}));
-          const next={...sleepSchedule,enabled:false};
-          await AsyncStorage.setItem(STORAGE,JSON.stringify({profile,tasks,dark,notifications,focusLength,seconds,sleepSchedule:next}));
-          return;
-        }
-        if(Platform.OS==='android') await Notifications.setNotificationChannelAsync('ouren-sleep',{name:'Sleep reminders',importance:Notifications.AndroidImportance.DEFAULT,sound:null});
-        await Notifications.scheduleNotificationAsync({
-          content:{title:'Time to wind down',body:'Give yourself a little space to slow down for the night.',data:{ourenSleepReminder:true,kind:'bedtime'},sound:false},
-          trigger:{type:Notifications.SchedulableTriggerInputTypes.DAILY,hour:sleepSchedule.bedtimeHour,minute:sleepSchedule.bedtimeMinute,channelId:Platform.OS==='android'?'ouren-sleep':undefined}
-        });
-        await Notifications.scheduleNotificationAsync({
-          content:{title:'Good morning',body:'Wake gently and begin the day at your own pace.',data:{ourenSleepReminder:true,kind:'wake'},sound:false},
-          trigger:{type:Notifications.SchedulableTriggerInputTypes.DAILY,hour:sleepSchedule.wakeHour,minute:sleepSchedule.wakeMinute,channelId:Platform.OS==='android'?'ouren-sleep':undefined}
-        });
-      }
-      await AsyncStorage.setItem(STORAGE,JSON.stringify({profile,tasks,dark,notifications,focusLength,seconds,sleepSchedule}));
-      Alert.alert('Sleep schedule saved',sleepSchedule.enabled?'Your daily bedtime and wake-up reminders are scheduled on this device.':'Your schedule is saved. Reminders are turned off.');
-    } catch(error) {
-      console.warn('Sleep schedule save failed',error);
-      Alert.alert('Could not save reminders','Please try again. Your schedule is kept in the app.');
-    } finally {
-      setSleepSaving(false);
+  const resetTimer=()=>{setRunning(false);setTimerEndsAt(null);setSeconds(focusLength*60);completedTimerRef.current=false;};
+  const toggleTimer=()=>{
+    if(running){
+      setRunning(false);
+      setTimerEndsAt(null);
+      return;
     }
+    const remaining=seconds>0?seconds:focusLength*60;
+    completedTimerRef.current=false;
+    setSeconds(remaining);
+    setTimerEndsAt(Date.now()+remaining*1000);
+    setRunning(true);
   };
-
   if(!fontsLoaded||!ready)return <View style={s.loading}><LogoMark size={48}/><Text style={s.loadingWord}>ouren</Text></View>;
 
   // First-launch onboarding is only shown until the local profile is created.
@@ -164,55 +144,16 @@ export default function App() {
 
   const renderHome=()=> <View style={{flex:1,backgroundColor:C.night}}><ImageBackground source={{uri:MOUNTAIN}} resizeMode="cover" style={s.homePhoto} imageStyle={{opacity:.48}}><LinearGradient colors={['rgba(17,18,16,.28)','rgba(17,18,16,.38)','rgba(17,18,16,.97)']} style={s.homeShade}><View style={s.homeTop}><LogoMark size={24} color={C.white}/><Pressable onPress={()=>setTab('Settings')} style={s.profileMini}><Text style={s.profileInitial}>{profile.name.slice(0,1).toUpperCase()}</Text></Pressable></View><View style={s.homeGreeting}><Text style={s.greetingTitle}>{greet},{'\n'}{profile.name}.</Text><Text style={s.greetingSub}>Your focus creates{"\n"}your future.</Text></View><View style={s.todayCard}><View style={s.todayHeader}><Text style={s.todayHeading}>Today</Text><Text style={s.todayDate}>{today.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</Text></View>{tasks.slice(0,4).map(t=><TaskItem key={t.id} task={t} onToggle={()=>toggleTask(t.id)} dark/> )}</View><View style={s.homeProgress}><Text style={s.homeProgressLabel}>YOUR DAILY RHYTHM</Text><Text style={s.homeProgressValue}>{done} of {tasks.length} complete</Text><View style={s.progressTrack}><View style={[s.progressFill,{width:(tasks.length?done/tasks.length*100:0)+'%'}]}/></View></View></LinearGradient></ImageBackground></View>;
 
-  const renderFocus=()=> <View style={{flex:1,backgroundColor:C.night}}><ImageBackground source={{uri:FOREST}} resizeMode="cover" style={s.focusPhoto} imageStyle={{opacity:.55}}><LinearGradient colors={['rgba(15,16,14,.45)','rgba(15,16,14,.5)','rgba(15,16,14,.7)']} style={s.focusShade}><View style={s.focusHeader}><Pressable onPress={()=>setTab('Home')} style={s.glassButton}><Ionicons name="close" size={19} color={C.white}/></Pressable><Pressable onPress={()=>setTab('Settings')} style={s.glassButton}><Ionicons name="settings-outline" size={18} color={C.white}/></Pressable></View><View style={s.timerArea}><View style={s.timerRing}><View style={s.timerArc}/><Text style={s.timerMode}>{mode}</Text><Text style={s.timerDigits}>{clock}</Text><Text style={s.timerCaption}>{running?'Stay in the moment':'Work'}</Text></View><Pressable onPress={()=>{if(seconds===0)setSeconds(focusLength*60);setRunning(v=>!v);}} style={s.timerPlay}><Ionicons name={running?'pause':'play'} size={24} color={C.ink}/></Pressable></View><View style={s.focusModes}>{[{name:'Break',icon:'timer-outline'},{name:'Focus',icon:'flame-outline'},{name:'Music',icon:'musical-notes-outline'}].map(m=><Pressable key={m.name} onPress={()=>{setMode(m.name);if(m.name!=='Music'){setRunning(false);const n=m.name==='Break'?5:25;setFocusLength(n);setSeconds(n*60);}}} style={s.focusModeButton}><Ionicons name={m.icon} size={18} color={C.white}/><Text style={s.focusModeText}>{m.name}</Text></Pressable>)}</View></LinearGradient></ImageBackground></View>;
+  const renderFocus=()=> <View style={{flex:1,backgroundColor:C.night}}><ImageBackground source={{uri:FOREST}} resizeMode="cover" style={s.focusPhoto} imageStyle={{opacity:.55}}><LinearGradient colors={['rgba(15,16,14,.45)','rgba(15,16,14,.5)','rgba(15,16,14,.7)']} style={s.focusShade}><View style={s.focusHeader}><Pressable onPress={()=>setTab('Home')} style={s.glassButton}><Ionicons name="close" size={19} color={C.white}/></Pressable><Pressable onPress={()=>setTab('Settings')} style={s.glassButton}><Ionicons name="settings-outline" size={18} color={C.white}/></Pressable></View><View style={s.timerArea}><View style={s.timerRing}><View style={s.timerArc}/><Text style={s.timerMode}>{mode}</Text><Text style={s.timerDigits}>{clock}</Text><Text style={s.timerCaption}>{running?'Stay in the moment':'Work'}</Text></View><Pressable onPress={toggleTimer} style={s.timerPlay}><Ionicons name={running?'pause':'play'} size={24} color={C.ink}/></Pressable></View><View style={s.focusModes}>{[{name:'Break',icon:'timer-outline'},{name:'Focus',icon:'flame-outline'},{name:'Music',icon:'musical-notes-outline'}].map(m=><Pressable key={m.name} onPress={()=>{setMode(m.name);if(m.name!=='Music'){setRunning(false);setTimerEndsAt(null);const n=m.name==='Break'?5:25;setFocusLength(n);setSeconds(n*60);completedTimerRef.current=false;}}} style={s.focusModeButton}><Ionicons name={m.icon} size={18} color={C.white}/><Text style={s.focusModeText}>{m.name}</Text></Pressable>)}</View></LinearGradient></ImageBackground></View>;
 
   const renderTasks=()=> <View style={[s.lightScreen,{backgroundColor:C.paper}]}><Header onProfile={()=>setTab('Settings')}/><View style={s.pageHeadingRow}><View><Text style={s.pageTitle}>Tasks</Text><Text style={s.pageSubtitle}>A little progress, every day.</Text></View><Pressable onPress={()=>setTaskModal(true)} style={s.addCircle}><Ionicons name="add" size={24} color={C.white}/></Pressable></View><View style={s.taskFilters}>{['Today','Upcoming','Completed'].map((v,i)=><Pressable key={v} onPress={()=>{if(i===0)setTab('Tasks');if(i===1)Alert.alert('Upcoming','Plan one day at a time. Add tasks here as you go.');if(i===2)Alert.alert('Completed',done+' tasks completed. Keep going.');}} style={[s.filterItem,i===0&&s.filterActive]}><Text style={[s.filterText,i===0&&s.filterTextActive]}>{v}</Text></Pressable>)}</View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:22}}><View style={s.lightTaskList}>{tasks.map(t=><TaskItem key={t.id} task={t} onToggle={()=>toggleTask(t.id)}/>)}</View></ScrollView><View style={s.floatingAdd}><Pressable onPress={()=>setTaskModal(true)} style={s.floatingAddButton}><Ionicons name="add" size={25} color={C.white}/></Pressable></View></View>;
 
   const renderCalendar=()=> <View style={[s.lightScreen,{backgroundColor:C.paper}]}><Header onProfile={()=>setTab('Settings')}/><View style={s.calendarMonthRow}><Text style={s.pageTitleSmall}>{shownMonth.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</Text><View style={{flexDirection:'row',gap:20}}><Pressable onPress={()=>{setMonthOffset(x=>x-1);setSelectedDay(1);}}><Ionicons name="chevron-back" size={18} color={C.ink}/></Pressable><Pressable onPress={()=>{setMonthOffset(x=>x+1);setSelectedDay(1);}}><Ionicons name="chevron-forward" size={18} color={C.ink}/></Pressable></View></View><View style={s.calendarGrid}>{['S','M','T','W','T','F','S'].map((d,i)=><Text key={d+i} style={s.weekday}>{d}</Text>)}{monthDays.map((d,i)=><Pressable key={i} onPress={()=>d&&setSelectedDay(d)} style={[s.dayCell,d===selectedDay&&s.daySelected]}><Text style={[s.dayNumber,d===selectedDay&&s.dayNumberSelected]}>{d||''}</Text></Pressable>)}</View><View style={s.scheduleHeading}><Text style={s.scheduleTitle}>{monthOffset===0&&selectedDay===today.getDate()?'Today':today.toLocaleDateString('en-US',{month:'short'})+' '+selectedDay}</Text><Text style={s.scheduleDate}>{tasks.filter(t=>!t.done).length} tasks</Text></View><ScrollView showsVerticalScrollIndicator={false}><View style={s.scheduleList}>{tasks.map(t=><TaskItem key={t.id} task={t} onToggle={()=>toggleTask(t.id)} showTime/>)}</View></ScrollView></View>;
 
-  const renderSleep=()=> <View style={s.sleepScreen}>
-    <View style={s.sleepTop}>
-      <Pressable onPress={()=>setTab('Settings')} style={s.sleepBack}><Ionicons name="arrow-back" size={18} color={C.white}/></Pressable>
-      <Text style={s.sleepTopLabel}>YOUR RHYTHM</Text>
-      <View style={{width:36}}/>
-    </View>
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.sleepContent}>
-      <View style={s.sleepIntroIcon}><Ionicons name="moon-outline" size={25} color={C.white}/></View>
-      <Text style={s.sleepTitle}>Make room for rest.</Text>
-      <Text style={s.sleepSubtitle}>A gentle routine can make tomorrow feel a little lighter.</Text>
-      <View style={s.sleepToggleCard}>
-        <View style={{flex:1,paddingRight:12}}>
-          <Text style={s.sleepCardTitle}>Sleep schedule</Text>
-          <Text style={s.sleepCardSub}>{sleepSchedule.enabled?'Daily reminders are on':'Set a rhythm that works for you'}</Text>
-        </View>
-        <Switch value={sleepSchedule.enabled} onValueChange={value=>setSleepSchedule(prev=>({...prev,enabled:value}))} trackColor={{false:'#494A43',true:'#A8A397'}} thumbColor={C.white}/>
-      </View>
-      <View style={s.sleepTimeCard}>
-        <View style={s.sleepTimeHeader}><View style={s.sleepTimeIcon}><Ionicons name="moon" size={17} color={C.ink}/></View><View style={{flex:1}}><Text style={s.sleepTimeTitle}>Bedtime</Text><Text style={s.sleepTimeHint}>Time to begin winding down</Text></View></View>
-        <View style={s.sleepTimeControl}>
-          <Pressable accessibilityLabel="Earlier bedtime" onPress={()=>updateSleepTime('bedtime',-15)} style={s.sleepAdjust}><Ionicons name="remove" size={20} color={C.ink}/></Pressable>
-          <Text style={s.sleepTimeValue}>{formatSleepTime(sleepSchedule.bedtimeHour,sleepSchedule.bedtimeMinute)}</Text>
-          <Pressable accessibilityLabel="Later bedtime" onPress={()=>updateSleepTime('bedtime',15)} style={s.sleepAdjust}><Ionicons name="add" size={20} color={C.ink}/></Pressable>
-        </View>
-      </View>
-      <View style={s.sleepTimeCard}>
-        <View style={s.sleepTimeHeader}><View style={s.sleepTimeIcon}><Ionicons name="sunny-outline" size={17} color={C.ink}/></View><View style={{flex:1}}><Text style={s.sleepTimeTitle}>Wake up</Text><Text style={s.sleepTimeHint}>Start your day gently</Text></View></View>
-        <View style={s.sleepTimeControl}>
-          <Pressable accessibilityLabel="Earlier wake-up time" onPress={()=>updateSleepTime('wake',-15)} style={s.sleepAdjust}><Ionicons name="remove" size={20} color={C.ink}/></Pressable>
-          <Text style={s.sleepTimeValue}>{formatSleepTime(sleepSchedule.wakeHour,sleepSchedule.wakeMinute)}</Text>
-          <Pressable accessibilityLabel="Later wake-up time" onPress={()=>updateSleepTime('wake',15)} style={s.sleepAdjust}><Ionicons name="add" size={20} color={C.ink}/></Pressable>
-        </View>
-      </View>
-      <View style={s.sleepDurationRow}><Ionicons name="time-outline" size={16} color={C.darkMuted}/><Text style={s.sleepDurationText}>Time in bed</Text><Text style={s.sleepDurationValue}>{(()=>{const mins=((sleepSchedule.wakeHour*60+sleepSchedule.wakeMinute)-(sleepSchedule.bedtimeHour*60+sleepSchedule.bedtimeMinute)+1440)%1440;return Math.floor(mins/60)+'h '+mins%60+'m';})()}</Text></View>
-      <Text style={s.sleepFootnote}>Reminders are scheduled on this device. They do not silence your phone or block apps automatically.</Text>
-      <ActionButton title={sleepSaving?'Saving…':'Save sleep schedule'} icon="checkmark" onPress={saveSleepSchedule} style={{marginTop:18,opacity:sleepSaving?.65:1}}/>
-    </ScrollView>
-  </View>;
-
-  const renderSettings=()=> <View style={s.settingsScreen}><View style={s.settingsTop}><Pressable onPress={()=>setTab('Home')}><Ionicons name="arrow-back" size={18} color={C.darkMuted}/></Pressable><View style={{flex:1}}/></View><View style={s.settingsBrand}><View style={s.settingsLogoBox}><LogoMark size={29} color={C.white}/></View><Text style={s.settingsWord}>ouren</Text><Text style={s.settingsTagline}>Better days, by design.</Text></View><Pressable onPress={()=>{setName(profile.name);setEmail(profile.email||'');setEditModal(true);}} style={s.accountCard}><View style={s.accountAvatar}><Text style={s.accountInitial}>{profile.name.slice(0,1).toUpperCase()}</Text></View><View style={{flex:1}}><Text style={s.accountName}>{profile.name}</Text><Text style={s.accountEmail}>{profile.email||'Personal space'}</Text></View><Ionicons name="chevron-forward" size={17} color={C.darkMuted}/></Pressable><View style={s.settingsList}>{[{icon:'person-outline',label:'Account',sub:'Profile details',action:openProfile},{icon:'notifications-outline',label:'Notifications',sub:'Gentle reminders',action:()=>setNotifications(v=>!v),toggle:true},{icon:'contrast-outline',label:'Appearance',sub:dark?'Dark mode':'Light mode',action:()=>setDark(v=>!v),toggle:true,value:dark},{icon:'moon-outline',label:'Sleep schedule',sub:sleepSchedule.enabled?'Daily reminders on':'Bedtime & wake-up reminders',action:()=>setTab('Sleep')},{icon:'timer-outline',label:'Focus settings',sub:focusLength+' minute sessions',action:()=>{const n=focusLength===25?45:focusLength===45?50:25;setFocusLength(n);setSeconds(n*60);},},{icon:'shield-checkmark-outline',label:'Privacy & security',sub:'Your data stays on this device',action:()=>Alert.alert('Private by design','Ouren stores your profile, tasks and preferences on this device. There is no cloud account connected.')},{icon:'help-circle-outline',label:'Help & support',sub:'About Ouren',action:()=>Alert.alert('Ouren','Focus today. Build tomorrow.')}].map((item,i)=><Pressable key={item.label} onPress={item.action} style={[s.settingRow,i>0&&{borderTopWidth:1,borderTopColor:'#393A34'}]}><Ionicons name={item.icon} size={17} color={C.darkMuted}/><View style={{flex:1}}><Text style={s.settingLabel}>{item.label}</Text><Text style={s.settingSub}>{item.sub}</Text></View>{item.toggle?<Switch value={item.label==='Notifications'?notifications:dark} onValueChange={item.label==='Notifications'?setNotifications:setDark} trackColor={{false:'#494A43',true:'#A8A397'}} thumbColor={C.white}/>:<Ionicons name="chevron-forward" size={16} color={C.darkMuted}/>}</Pressable>)}</View><Pressable onPress={()=>Alert.alert('Log out of this device?','This removes your local profile and app data.',[{text:'Cancel',style:'cancel'},{text:'Log out',style:'destructive',onPress:async()=>{await AsyncStorage.removeItem(STORAGE);setProfile(null);setTasks(initialTasks);setOnboarding(0);setTab('Home');setDark(false);setNotifications(true);setName('');setEmail('');}}])} style={s.logoutButton}><Text style={s.logoutText}>Log out</Text></Pressable></View>;
+  const renderSettings=()=> <View style={s.settingsScreen}><View style={s.settingsTop}><Pressable onPress={()=>setTab('Home')}><Ionicons name="arrow-back" size={18} color={C.darkMuted}/></Pressable><View style={{flex:1}}/></View><View style={s.settingsBrand}><View style={s.settingsLogoBox}><LogoMark size={29} color={C.white}/></View><Text style={s.settingsWord}>ouren</Text><Text style={s.settingsTagline}>Better days, by design.</Text></View><Pressable onPress={()=>{setName(profile.name);setEmail(profile.email||'');setEditModal(true);}} style={s.accountCard}><View style={s.accountAvatar}><Text style={s.accountInitial}>{profile.name.slice(0,1).toUpperCase()}</Text></View><View style={{flex:1}}><Text style={s.accountName}>{profile.name}</Text><Text style={s.accountEmail}>{profile.email||'Personal space'}</Text></View><Ionicons name="chevron-forward" size={17} color={C.darkMuted}/></Pressable><View style={s.settingsList}>{[{icon:'person-outline',label:'Account',sub:'Profile details',action:openProfile},{icon:'notifications-outline',label:'Notifications',sub:'Gentle reminders',action:()=>setNotifications(v=>!v),toggle:true},{icon:'contrast-outline',label:'Appearance',sub:dark?'Dark mode':'Light mode',action:()=>setDark(v=>!v),toggle:true,value:dark},{icon:'timer-outline',label:'Focus settings',sub:focusLength+' minute sessions',action:()=>{const n=focusLength===25?45:focusLength===45?50:25;setFocusLength(n);setSeconds(n*60);setTimerEndsAt(null);setRunning(false);},},{icon:'shield-checkmark-outline',label:'Privacy & security',sub:'Your data stays on this device',action:()=>Alert.alert('Private by design','Ouren stores your profile, tasks and preferences on this device. There is no cloud account connected.')},{icon:'help-circle-outline',label:'Help & support',sub:'About Ouren',action:()=>Alert.alert('Ouren','Focus today. Build tomorrow.')}].map((item,i)=><Pressable key={item.label} onPress={item.action} style={[s.settingRow,i>0&&{borderTopWidth:1,borderTopColor:'#393A34'}]}><Ionicons name={item.icon} size={17} color={C.darkMuted}/><View style={{flex:1}}><Text style={s.settingLabel}>{item.label}</Text><Text style={s.settingSub}>{item.sub}</Text></View>{item.toggle?<Switch value={item.label==='Notifications'?notifications:dark} onValueChange={item.label==='Notifications'?setNotifications:setDark} trackColor={{false:'#494A43',true:'#A8A397'}} thumbColor={C.white}/>:<Ionicons name="chevron-forward" size={16} color={C.darkMuted}/>}</Pressable>)}</View><Pressable onPress={()=>Alert.alert('Log out of this device?','This removes your local profile and app data.',[{text:'Cancel',style:'cancel'},{text:'Log out',style:'destructive',onPress:async()=>{await AsyncStorage.removeItem(STORAGE);setProfile(null);setTasks(initialTasks);setOnboarding(0);setTab('Home');setDark(false);setNotifications(true);setName('');setEmail('');}}])} style={s.logoutButton}><Text style={s.logoutText}>Log out</Text></Pressable></View>;
 
   return <View style={{flex:1,backgroundColor:palette.bg}}><StatusBar barStyle={tab==='Home'||tab==='Focus'||tab==='Settings'?'light-content':'dark-content'} />
-    <View style={{flex:1}}>{tab==='Home'&&renderHome()}{tab==='Focus'&&renderFocus()}{tab==='Tasks'&&renderTasks()}{tab==='Calendar'&&renderCalendar()}{tab==='Settings'&&renderSettings()}{tab==='Sleep'&&renderSleep()}</View>
+    <View style={{flex:1}}>{tab==='Home'&&renderHome()}{tab==='Focus'&&renderFocus()}{tab==='Tasks'&&renderTasks()}{tab==='Calendar'&&renderCalendar()}{tab==='Settings'&&renderSettings()}</View>
     {tab!=='Settings'&&tab!=='Focus'&&<View style={[s.tabBar,{backgroundColor:tab==='Home'||tab==='Focus'?C.night:C.paper,borderTopColor:tab==='Home'||tab==='Focus'?'#33342F':'#E1DCD3'}]}>{[{key:'Home',icon:'home-outline'},{key:'Tasks',icon:'checkbox-outline'},{key:'Focus',icon:'radio-button-on-outline'},{key:'Calendar',icon:'calendar-outline'}].map(n=><Pressable key={n.key} onPress={()=>setTab(n.key)} style={s.tabItem}><Ionicons name={n.icon} size={17} color={tab===n.key?(tab==='Home'||tab==='Focus'?C.white:C.ink):(tab==='Home'||tab==='Focus'?'#89877F':'#969187')}/><Text style={[s.tabLabel,{color:tab===n.key?(tab==='Home'||tab==='Focus'?C.white:C.ink):(tab==='Home'||tab==='Focus'?'#89877F':'#969187')}]}>{n.key}</Text></Pressable>)}</View>}
     <Modal visible={taskModal} transparent animationType="slide" onRequestClose={()=>setTaskModal(false)}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={s.modalShade}><Pressable style={StyleSheet.absoluteFill} onPress={()=>setTaskModal(false)}/><View style={s.modalCard}><View style={s.modalHandle}/><View style={s.modalTitleRow}><Text style={s.modalTitle}>Add a task</Text><Pressable onPress={()=>setTaskModal(false)}><Ionicons name="close" size={22} color={C.muted}/></Pressable></View><TextInput value={taskName} onChangeText={setTaskName} placeholder="What would you like to do?" placeholderTextColor="#9A958B" style={s.inputLight}/><Text style={s.categoryCaption}>CATEGORY</Text><View style={s.categoryPills}>{['Focus','Growth','Health','Planning'].map(v=><Pressable key={v} onPress={()=>setCategory(v)} style={[s.categoryPill,category===v&&{backgroundColor:C.sand}]}><Text style={s.categoryText}>{v}</Text></Pressable>)}</View><ActionButton title="Save task" icon="checkmark" onPress={addTask} style={{marginTop:22}}/></View></KeyboardAvoidingView></Modal>
     <Modal visible={editModal} transparent animationType="fade" onRequestClose={()=>setEditModal(false)}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={s.modalShade}><Pressable style={StyleSheet.absoluteFill} onPress={()=>setEditModal(false)}/><View style={s.modalCard}><View style={s.modalTitleRow}><Text style={s.modalTitle}>Your account</Text><Pressable onPress={()=>setEditModal(false)}><Ionicons name="close" size={22} color={C.muted}/></Pressable></View><TextInput value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor="#9A958B" style={s.inputLight}/><TextInput value={email} onChangeText={setEmail} placeholder="Email (optional)" placeholderTextColor="#9A958B" autoCapitalize="none" keyboardType="email-address" style={[s.inputLight,{marginTop:10}]}/><ActionButton title="Save changes" onPress={saveEditedProfile} style={{marginTop:18}}/></View></KeyboardAvoidingView></Modal>
@@ -230,29 +171,6 @@ const s=StyleSheet.create({
   homePhoto:{flex:1},homeShade:{flex:1,paddingTop:Platform.OS==='ios'?59:35,paddingHorizontal:20,paddingBottom:18},homeTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},profileMini:{width:29,height:29,borderRadius:15,backgroundColor:'#9B8D7B',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#D7CDBF'},profileInitial:{fontFamily:'Manrope_700Bold',fontSize:11,color:C.white},homeGreeting:{marginTop:32,marginBottom:25},greetingTitle:{fontFamily:'Manrope_500Medium',fontSize:23,lineHeight:29,letterSpacing:-.5,color:C.white},greetingSub:{fontFamily:'Manrope_400Regular',fontSize:11,lineHeight:17,color:'#E0DCD3',marginTop:13},todayCard:{backgroundColor:'rgba(34,35,31,.84)',borderRadius:17,paddingHorizontal:14,paddingTop:13,paddingBottom:2},todayHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:3},todayHeading:{fontFamily:'Manrope_600SemiBold',fontSize:11,color:C.white},todayDate:{fontFamily:'Manrope_400Regular',fontSize:9,color:C.darkMuted},homeProgress:{marginTop:17},homeProgressLabel:{fontFamily:'Manrope_600SemiBold',fontSize:8,letterSpacing:1.2,color:C.darkMuted},homeProgressValue:{fontFamily:'Manrope_500Medium',fontSize:15,color:C.white,marginTop:6},progressTrack:{height:2,backgroundColor:'#55564E',borderRadius:2,marginTop:10},progressFill:{height:2,backgroundColor:C.white,borderRadius:2},
   focusPhoto:{flex:1},focusShade:{flex:1,paddingTop:Platform.OS==='ios'?57:32,paddingHorizontal:20,paddingBottom:24},focusHeader:{flexDirection:'row',justifyContent:'space-between'},glassButton:{width:32,height:32,borderRadius:16,backgroundColor:'rgba(44,45,39,.65)',alignItems:'center',justifyContent:'center'},timerArea:{flex:1,alignItems:'center',justifyContent:'center'},timerRing:{width:240,height:240,borderRadius:120,borderWidth:1.5,borderColor:'rgba(244,240,231,.38)',alignItems:'center',justifyContent:'center'},timerArc:{position:'absolute',width:240,height:240,borderRadius:120,borderTopWidth:2,borderTopColor:C.white,transform:[{rotate:'32deg'}]},timerMode:{fontFamily:'Manrope_400Regular',fontSize:10,color:C.white},timerDigits:{fontFamily:'Manrope_500Medium',fontSize:33,letterSpacing:-1,color:C.white,marginVertical:6},timerCaption:{fontFamily:'Manrope_400Regular',fontSize:10,color:C.white},timerPlay:{width:51,height:51,borderRadius:26,backgroundColor:C.white,alignItems:'center',justifyContent:'center',marginTop:27},focusModes:{flexDirection:'row',justifyContent:'space-between',gap:13},focusModeButton:{flex:1,height:68,borderRadius:17,backgroundColor:'rgba(39,40,35,.68)',alignItems:'center',justifyContent:'center',gap:6},focusModeText:{fontFamily:'Manrope_400Regular',fontSize:9,color:C.white},
   tabBar:{height:59,borderTopWidth:1,flexDirection:'row',justifyContent:'space-around',alignItems:'center',paddingBottom:Platform.OS==='ios'?7:2},tabItem:{flex:1,alignItems:'center',justifyContent:'center',gap:3},tabLabel:{fontFamily:'Manrope_400Regular',fontSize:8},
-  sleepScreen:{flex:1,backgroundColor:C.night,paddingTop:Platform.OS==='ios'?58:32,paddingHorizontal:20,paddingBottom:24},
-  sleepTop:{height:36,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
-  sleepBack:{width:36,height:36,borderRadius:18,backgroundColor:'#2B2C27',alignItems:'center',justifyContent:'center'},
-  sleepTopLabel:{fontFamily:'Manrope_600SemiBold',fontSize:9,letterSpacing:2,color:C.darkMuted},
-  sleepContent:{paddingBottom:20},
-  sleepIntroIcon:{width:54,height:54,borderRadius:18,backgroundColor:'#33342E',alignItems:'center',justifyContent:'center',marginTop:27},
-  sleepTitle:{fontFamily:'Manrope_500Medium',fontSize:27,lineHeight:34,letterSpacing:-.8,color:C.white,marginTop:19},
-  sleepSubtitle:{fontFamily:'Manrope_400Regular',fontSize:11,lineHeight:18,color:C.darkMuted,marginTop:8,maxWidth:270,marginBottom:23},
-  sleepToggleCard:{minHeight:72,borderRadius:16,backgroundColor:'#282925',paddingHorizontal:15,paddingVertical:13,flexDirection:'row',alignItems:'center',marginBottom:12},
-  sleepCardTitle:{fontFamily:'Manrope_600SemiBold',fontSize:12,color:C.white},
-  sleepCardSub:{fontFamily:'Manrope_400Regular',fontSize:9,color:C.darkMuted,marginTop:5},
-  sleepTimeCard:{backgroundColor:C.paper,borderRadius:17,padding:15,marginBottom:10},
-  sleepTimeHeader:{flexDirection:'row',alignItems:'center',gap:10},
-  sleepTimeIcon:{width:34,height:34,borderRadius:12,backgroundColor:'#E2DACE',alignItems:'center',justifyContent:'center'},
-  sleepTimeTitle:{fontFamily:'Manrope_600SemiBold',fontSize:12,color:C.ink},
-  sleepTimeHint:{fontFamily:'Manrope_400Regular',fontSize:9,color:C.muted,marginTop:3},
-  sleepTimeControl:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:17,paddingLeft:44},
-  sleepAdjust:{width:34,height:34,borderRadius:17,backgroundColor:'#E7E1D7',alignItems:'center',justifyContent:'center'},
-  sleepTimeValue:{fontFamily:'Manrope_600SemiBold',fontSize:23,letterSpacing:-.5,color:C.ink,fontVariant:['tabular-nums']},
-  sleepDurationRow:{flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:4,paddingTop:8},
-  sleepDurationText:{fontFamily:'Manrope_400Regular',fontSize:10,color:C.darkMuted,flex:1},
-  sleepDurationValue:{fontFamily:'Manrope_600SemiBold',fontSize:10,color:C.white},
-  sleepFootnote:{fontFamily:'Manrope_400Regular',fontSize:9,lineHeight:15,color:'#89877F',marginTop:16,paddingHorizontal:2},
   settingsScreen:{flex:1,backgroundColor:C.night,paddingTop:Platform.OS==='ios'?58:32,paddingHorizontal:17,paddingBottom:17},settingsTop:{flexDirection:'row',alignItems:'center',height:24},settingsBrand:{alignItems:'center',marginTop:8,marginBottom:22},settingsLogoBox:{width:53,height:53,borderRadius:15,backgroundColor:'#33342E',alignItems:'center',justifyContent:'center'},settingsWord:{fontFamily:'Manrope_500Medium',fontSize:18,letterSpacing:3.2,color:C.white,marginTop:5},settingsTagline:{fontFamily:'Manrope_400Regular',fontSize:9,color:C.darkMuted,marginTop:3},accountCard:{height:61,borderRadius:15,backgroundColor:'#2B2C27',flexDirection:'row',alignItems:'center',paddingHorizontal:12,gap:10,marginBottom:14},accountAvatar:{width:32,height:32,borderRadius:16,backgroundColor:'#968875',alignItems:'center',justifyContent:'center'},accountInitial:{fontFamily:'Manrope_700Bold',fontSize:12,color:C.white},accountName:{fontFamily:'Manrope_600SemiBold',fontSize:11,color:C.white},accountEmail:{fontFamily:'Manrope_400Regular',fontSize:9,color:C.darkMuted,marginTop:3},settingsList:{backgroundColor:'#252621',borderRadius:16,paddingHorizontal:13},settingRow:{minHeight:49,flexDirection:'row',alignItems:'center',gap:11},settingLabel:{fontFamily:'Manrope_500Medium',fontSize:10,color:C.white},settingSub:{fontFamily:'Manrope_400Regular',fontSize:8,color:C.darkMuted,marginTop:3},logoutButton:{height:39,borderRadius:20,backgroundColor:'#2B2C27',alignItems:'center',justifyContent:'center',marginTop:13},logoutText:{fontFamily:'Manrope_600SemiBold',fontSize:10,color:C.white},
   modalShade:{flex:1,backgroundColor:'rgba(17,17,15,.48)',justifyContent:'flex-end'},modalCard:{backgroundColor:C.white,borderTopLeftRadius:25,borderTopRightRadius:25,paddingHorizontal:22,paddingTop:13,paddingBottom:32},modalHandle:{width:37,height:4,borderRadius:3,backgroundColor:'#C9C3B9',alignSelf:'center',marginBottom:19},modalTitleRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:17},modalTitle:{fontFamily:'Manrope_600SemiBold',fontSize:20,color:C.ink},inputLight:{height:48,borderRadius:12,borderWidth:1,borderColor:C.line,paddingHorizontal:14,fontFamily:'Manrope_400Regular',fontSize:12,color:C.ink,backgroundColor:'#F5F1EA'},categoryCaption:{fontFamily:'Manrope_700Bold',fontSize:9,letterSpacing:1.3,color:C.muted,marginTop:18,marginBottom:10},categoryPills:{flexDirection:'row',flexWrap:'wrap',gap:7},categoryPill:{paddingHorizontal:12,paddingVertical:9,borderRadius:10,backgroundColor:'#EEE9E0'},categoryText:{fontFamily:'Manrope_500Medium',fontSize:10,color:C.ink}
 });
