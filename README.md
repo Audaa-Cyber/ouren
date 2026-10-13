@@ -41,7 +41,7 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Active task lists prioritize overdue and high-priority work; completed tasks are ordered by most recent completion.
 - After a linked focus session, an optional prompt lets the user mark that task complete without completing it automatically.
 - Local JSON backup export and validated backup restore, including tasks, preferences, timer state and focus history.
-- Monthly calendar navigation and day selection.
+- Monthly calendar navigation, one-tap return to today, and markers on dates with scheduled unfinished tasks.
 - Profile editing, light/dark appearance, notification preference, and local-data reset.
 - Sleep scheduling/protection features are intentionally excluded.
 - Manrope font from the public Expo Google Fonts package.
