@@ -20,6 +20,7 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Create tasks and mark tasks complete.
 - Focus timer with start, pause, focus/break modes, configurable duration, and deadline-based recovery after backgrounding or restarting the app.
 - Local focus session history with completed-session totals, today’s focus time, and a clear-history control.
+- Optional task linking for focus sessions; completed focus history stores the task title even if the task is later edited or removed.
 - Monthly calendar navigation and day selection.
 - Profile editing, light/dark appearance, notification preference, and local-data reset.
 - Sleep scheduling/protection features are intentionally excluded.
