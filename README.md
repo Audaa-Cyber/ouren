@@ -26,6 +26,9 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Task filters for open, scheduled, and completed tasks.
 - Daily and weekly recurring tasks that reopen after their recurrence period when the app is opened.
 - Confirmed task deletion without deleting completed focus-history records.
+- Editable tasks, including title, category, priority, estimate, schedule and recurrence.
+- Custom focus and break durations, plus scheduled local notifications when a timer ends; disabling notifications cancels pending focus alerts.
+- Export and restore preserve configured focus and break durations.
 - Local JSON backup export and validated backup restore, including tasks, preferences, timer state and focus history.
 - Monthly calendar navigation and day selection.
 - Profile editing, light/dark appearance, notification preference, and local-data reset.
