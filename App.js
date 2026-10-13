@@ -84,6 +84,12 @@ export default function App() {
   const completedTimerRef = useRef(false);
 
   useEffect(()=>{(async()=>{try{const raw=await AsyncStorage.getItem(STORAGE);if(raw){const d=JSON.parse(raw);setProfile(d.profile||null);setTasks(Array.isArray(d.tasks)?d.tasks:initialTasks);setDark(!!d.dark);setNotifications(d.notifications!==false);setFocusLength(d.focusLength||25);setSeconds(d.timerRunning&&d.timerEndsAt?Math.max(0,Math.ceil((d.timerEndsAt-Date.now())/1000)):(d.seconds??(d.focusLength||25)*60));setRunning(!!(d.timerRunning&&d.timerEndsAt>Date.now()));setTimerEndsAt(d.timerRunning&&d.timerEndsAt>Date.now()?d.timerEndsAt:null);setOnboarding(d.profile?4:0);}}catch(e){console.warn('Restore failed',e);}finally{setReady(true);}})();},[]);
+  useEffect(()=>{
+    // Remove legacy sleep reminders from earlier app builds; Ouren intentionally has no sleep-protection feature.
+    Notifications.getAllScheduledNotificationsAsync()
+      .then(items=>Promise.all(items.filter(item=>item.content?.data?.ourenSleepReminder).map(item=>Notifications.cancelScheduledNotificationAsync(item.identifier))))
+      .catch(error=>console.warn('Legacy reminder cleanup skipped',error));
+  },[]);
   useEffect(()=>{if(ready&&profile)AsyncStorage.setItem(STORAGE,JSON.stringify({profile,tasks,dark,notifications,focusLength,seconds,timerRunning:running,timerEndsAt})).catch(e=>console.warn('Save failed',e));},[ready,profile,tasks,dark,notifications,focusLength,seconds,running,timerEndsAt]);
   useEffect(()=>{
     if(!running||!timerEndsAt)return undefined;
