@@ -46,6 +46,7 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Monthly calendar navigation, one-tap return to today, and markers on dates with scheduled unfinished tasks.
 - Calendar day buttons announce their date and unfinished-task count to screen readers, including tasks scheduled for today without an explicit due date.
 - Task due-date shortcuts include today, tomorrow, 3 days, 7 days, 14 days, and next Monday, plus an unscheduled option.
+- A custom monthly date picker lets you select any calendar date for a task, navigate months, or clear the due date from both task creation and editing.
 - Profile editing, light/dark appearance, notification preference, and local-data reset.
 - Sleep scheduling/protection features are intentionally excluded.
 - Manrope font from the public Expo Google Fonts package.
