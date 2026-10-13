@@ -32,6 +32,9 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Export focus history as a CSV spreadsheet with completion time, mode, linked task and duration.
 - Progress milestones for first focus session, focus across three days, one hour of focus, and five completed tasks.
 - Task rows show due dates and recurrence labels.
+- A dedicated Overdue filter separates missed deadlines from tasks due today, with overdue labels and a live count.
+- Progress totals and weekly charts count focus sessions only, with a comparison against the previous seven-day period.
+- Daily recurring tasks reset when the local calendar day changes; weekly tasks reset at the local Monday week boundary.
 - Daily focus goals with progress feedback and a consecutive-day focus streak.
 - Due dates on tasks, with date-aware Today/Upcoming filters and calendar-day task lists.
 - Task search across titles, details, categories and priorities.
