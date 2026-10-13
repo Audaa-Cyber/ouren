@@ -45,7 +45,7 @@ function Header({ dark=false, onProfile }) {
 }
 function TaskItem({ task, onToggle, dark=false, showTime=false, onDelete, onEdit }) {
   const color = dark ? C.white : C.ink;
-  return <Pressable onPress={onToggle} style={[s.taskItem,{borderBottomColor:dark?'#3A3B35':'#E8E3DA'}]}>
+  return <Pressable accessibilityRole="checkbox" accessibilityLabel={task.title+(task.dueDate?', due '+task.dueDate:'')+(task.priority==='High'?', high priority':'')} accessibilityState={{checked:!!task.done}} onPress={onToggle} style={[s.taskItem,{borderBottomColor:dark?'#3A3B35':'#E8E3DA'}]}>
     <View style={[s.taskCheck,task.done&&{backgroundColor:color,borderColor:color}]}>{task.done&&<Ionicons name="checkmark" size={12} color={dark?C.ink:C.white}/>}</View>
     <View style={{flex:1}}>
       <Text style={[s.taskName,{color},task.done&&{textDecorationLine:'line-through',opacity:.58}]}>{task.title}</Text>
