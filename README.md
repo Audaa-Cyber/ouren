@@ -25,7 +25,8 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Task creation includes category, priority, a time estimate, and an optional daily schedule time.
 - Task filters for open, scheduled, and completed tasks.
 - Task search covers titles, details, category, priority, due date, and recurrence, with a screen-reader label and native clear control while editing.
-- Daily and weekly recurring tasks that reopen after their recurrence period when the app is opened.
+- Daily and weekly recurring tasks that reopen after their recurrence period when the app is opened or when you return to the foreground after the day/week boundary.
+- Task creation and editing warn before discarding unsaved changes, with a chance to keep editing.
 - Confirmed task deletion without deleting completed focus-history records.
 - Editable tasks, including title, category, priority, estimate, schedule and recurrence.
 - Custom focus and break durations, plus scheduled local notifications when a timer ends; disabling notifications cancels pending focus alerts.
