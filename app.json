@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Ouren",
+    "slug": "ouren",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "ouren",
+    "splash": {
+      "backgroundColor": "#F4F0E9",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ouren.app"
+    },
+    "android": {
+      "package": "com.ouren.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#F4F0E9"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
