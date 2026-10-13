@@ -30,6 +30,7 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Custom focus and break durations, plus scheduled local notifications when a timer ends; disabling notifications cancels pending focus alerts.
 - Export and restore preserve configured focus and break durations.
 - Export focus history as a CSV spreadsheet with completion time, mode, linked task and duration.
+- Export the full task list as a CSV spreadsheet with status, category, priority, estimate, scheduled time, due date, recurrence, and details.
 - Progress milestones for first focus session, focus across three days, one hour of focus, and five completed tasks.
 - Task rows show due dates and recurrence labels.
 - A dedicated Overdue filter separates missed deadlines from tasks due today, with overdue labels and a live count.
