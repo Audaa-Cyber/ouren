@@ -24,6 +24,7 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - A local progress screen with today’s focus time, seven-day focus chart, task completion rate, and most-focused linked task.
 - Task creation includes category, priority, a time estimate, and an optional daily schedule time.
 - Task filters for open, scheduled, and completed tasks.
+- Task search covers titles, details, category, priority, due date, and recurrence, with a screen-reader label and native clear control while editing.
 - Daily and weekly recurring tasks that reopen after their recurrence period when the app is opened.
 - Confirmed task deletion without deleting completed focus-history records.
 - Editable tasks, including title, category, priority, estimate, schedule and recurrence.
