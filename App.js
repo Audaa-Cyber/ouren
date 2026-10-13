@@ -110,6 +110,23 @@ export default function App() {
 
   useEffect(()=>{(async()=>{try{const raw=await AsyncStorage.getItem(STORAGE);if(raw){const d=JSON.parse(raw);setProfile(d.profile||null);const savedTasks=Array.isArray(d.tasks)?d.tasks:initialTasks;const nowDate=new Date();const todayKey=localDateKey(nowDate);const weekStartKey=date=>{const d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return localDateKey(d);};setTasks(savedTasks.map(task=>{task={...task,dueDate:task.dueDate===undefined?(task.time?todayKey:null):task.dueDate};if(!task.recurrence||task.recurrence==='Never'||!task.done||!task.completedAt)return task;const completedDate=new Date(task.completedAt);if(Number.isNaN(completedDate.getTime()))return task;const shouldReset=task.recurrence==='Daily'?localDateKey(completedDate)!==todayKey:task.recurrence==='Weekly'?weekStartKey(completedDate)!==weekStartKey(nowDate):false;return shouldReset?{...task,done:false,completedAt:null}:task;}));setDark(!!d.dark);setNotifications(d.notifications!==false);setFocusLength(d.focusLength||25);setBreakLength(d.breakLength||5);setFocusGoalMinutes(d.focusGoalMinutes||120);setSeconds(d.timerRunning&&d.timerEndsAt?Math.max(0,Math.ceil((d.timerEndsAt-Date.now())/1000)):(d.seconds??(d.focusLength||25)*60));setRunning(!!(d.timerRunning&&d.timerEndsAt>Date.now()));setTimerEndsAt(d.timerRunning&&d.timerEndsAt>Date.now()?d.timerEndsAt:null);const restoredHistory=Array.isArray(d.sessionHistory)?d.sessionHistory:[];const restoredActive=d.activeSession||null;const expiredRunningSession=!!(d.timerRunning&&d.timerEndsAt&&d.timerEndsAt<=Date.now()&&restoredActive);setActiveSession(expiredRunningSession?null:restoredActive);setSessionHistory(expiredRunningSession?[{...restoredActive,completedAt:d.timerEndsAt,durationSeconds:restoredActive.plannedSeconds},...restoredHistory].slice(0,500):restoredHistory);setFocusTaskId(d.focusTaskId||null);setOnboarding(d.profile?4:0);}}catch(e){console.warn('Restore failed',e);}finally{setReady(true);}})();},[]);
   useEffect(()=>{
+    // Reopen completed recurring tasks when a new local day/week begins while the app is backgrounded.
+    const subscription=AppState.addEventListener('change',state=>{
+      if(state!=='active')return;
+      const nowDate=new Date();
+      const todayKey=localDateKey(nowDate);
+      const weekStartKey=date=>{const d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return localDateKey(d);};
+      setTasks(previous=>previous.map(task=>{
+        if(!task.done||!task.completedAt||!task.recurrence||task.recurrence==='Never')return task;
+        const completedDate=new Date(task.completedAt);
+        if(Number.isNaN(completedDate.getTime()))return task;
+        const elapsed=task.recurrence==='Daily'?localDateKey(completedDate)!==todayKey:task.recurrence==='Weekly'?weekStartKey(completedDate)!==weekStartKey(nowDate):false;
+        return elapsed?{...task,done:false,completedAt:null}:task;
+      }));
+    });
+    return()=>subscription.remove();
+  },[]);
+  useEffect(()=>{
     // Remove legacy sleep reminders from earlier app builds; Ouren intentionally has no sleep-protection feature.
     Notifications.getAllScheduledNotificationsAsync()
       .then(items=>Promise.all(items.filter(item=>item.content?.data?.ourenSleepReminder).map(item=>Notifications.cancelScheduledNotificationAsync(item.identifier))))
