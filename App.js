@@ -130,7 +130,7 @@ export default function App() {
           }
           setActiveSession(null);
         }
-        Alert.alert('Session complete','Take a breath. You made space for what matters.');
+        if(activeSession?.taskId){Alert.alert('Session complete',`You focused on “${activeSession.taskTitle||'your task'}”. Take a breath.`,[{text:'Not yet',style:'cancel'},{text:'Mark task done',onPress:()=>setTasks(previous=>previous.map(task=>task.id===activeSession.taskId?{...task,done:true,completedAt:Date.now()}:task))}]);}else{Alert.alert('Session complete','Take a breath. You made space for what matters.');}
       }
     };
     updateRemaining();
