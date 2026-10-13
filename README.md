@@ -22,7 +22,9 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Local focus session history with completed-session totals, today’s focus time, and a clear-history control.
 - Optional task linking for focus sessions; completed focus history stores the task title even if the task is later edited or removed.
 - A local progress screen with today’s focus time, seven-day focus chart, task completion rate, and most-focused linked task.
-- Task creation includes category, priority, and a time estimate.
+- Task creation includes category, priority, a time estimate, and an optional daily schedule time.
+- Task filters for open, scheduled, and completed tasks.
+- Local JSON backup export and validated backup restore, including tasks, preferences, timer state and focus history.
 - Monthly calendar navigation and day selection.
 - Profile editing, light/dark appearance, notification preference, and local-data reset.
 - Sleep scheduling/protection features are intentionally excluded.
