@@ -210,7 +210,38 @@ export default function App() {
     if(onboarding===4)return <KeyboardAvoidingView style={s.setupScreen} behavior={Platform.OS==='ios'?'padding':undefined}><StatusBar barStyle="light-content"/><Pressable onPress={()=>setOnboarding(3)} style={s.backButton}><Ionicons name="arrow-back" size={19} color={C.white}/></Pressable><View style={s.setupCenter}><View style={s.setupLogo}><LogoMark size={34} color={C.white}/></View><Text style={s.setupWord}>ouren</Text><Text style={s.setupSub}>Better days, by design.</Text><View style={s.setupForm}><Text style={s.setupPrompt}>Make this space yours.</Text><Text style={s.setupHint}>Your profile is saved on this device.</Text><TextInput value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor="#A9A69E" style={s.inputDark}/><TextInput value={email} onChangeText={setEmail} placeholder="Email (optional)" placeholderTextColor="#A9A69E" autoCapitalize="none" keyboardType="email-address" style={s.inputDark}/><ActionButton title="Continue" onPress={saveProfile} style={{marginTop:12}}/></View></View><Text style={s.setupPrivacy}>PRIVATE BY DESIGN · STORED LOCALLY</Text></KeyboardAvoidingView>;
   }
 
-  const renderHome=()=> <View style={{flex:1,backgroundColor:C.night}}><ImageBackground source={{uri:MOUNTAIN}} resizeMode="cover" style={s.homePhoto} imageStyle={{opacity:.48}}><LinearGradient colors={['rgba(17,18,16,.28)','rgba(17,18,16,.38)','rgba(17,18,16,.97)']} style={s.homeShade}><View style={s.homeTop}><LogoMark size={24} color={C.white}/><Pressable onPress={()=>setTab('Settings')} style={s.profileMini}><Text style={s.profileInitial}>{profile.name.slice(0,1).toUpperCase()}</Text></Pressable></View><View style={s.homeGreeting}><Text style={s.greetingTitle}>{greet},{'\n'}{profile.name}.</Text><Text style={s.greetingSub}>Your focus creates{"\n"}your future.</Text></View><View style={s.todayCard}><View style={s.todayHeader}><Text style={s.todayHeading}>Today</Text><Text style={s.todayDate}>{today.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</Text></View>{tasks.slice(0,4).map(t=><TaskItem key={t.id} task={t} onToggle={()=>toggleTask(t.id)} dark/> )}</View><Pressable onPress={()=>setTab('Progress')} style={s.homeProgress}><Text style={s.homeProgressLabel}>YOUR DAILY RHYTHM · VIEW PROGRESS ↗</Text><Text style={s.homeProgressValue}>{done} of {tasks.length} complete</Text><View style={s.progressTrack}><View style={[s.progressFill,{width:(tasks.length?done/tasks.length*100:0)+'%'}]}/></View></View></LinearGradient></ImageBackground></View>;
+  const renderHome=()=> (
+    <View style={{flex:1,backgroundColor:C.night}}>
+      <ImageBackground source={{uri:MOUNTAIN}} resizeMode="cover" style={s.homePhoto} imageStyle={{opacity:.48}}>
+        <LinearGradient colors={['rgba(17,18,16,.28)','rgba(17,18,16,.38)','rgba(17,18,16,.97)']} style={s.homeShade}>
+          <View style={s.homeTop}>
+            <LogoMark size={24} color={C.white}/>
+            <Pressable onPress={()=>setTab('Settings')} style={s.profileMini}>
+              <Text style={s.profileInitial}>{profile.name.slice(0,1).toUpperCase()}</Text>
+            </Pressable>
+          </View>
+          <View style={s.homeGreeting}>
+            <Text style={s.greetingTitle}>{greet},{'\n'}{profile.name}.</Text>
+            <Text style={s.greetingSub}>Your focus creates{"\n"}your future.</Text>
+          </View>
+          <View style={s.todayCard}>
+            <View style={s.todayHeader}>
+              <Text style={s.todayHeading}>Today</Text>
+              <Text style={s.todayDate}>{today.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</Text>
+            </View>
+            {tasks.slice(0,4).map(t=><TaskItem key={t.id} task={t} onToggle={()=>toggleTask(t.id)} dark/>)}
+          </View>
+          <Pressable onPress={()=>setTab('Progress')} style={s.homeProgress}>
+            <Text style={s.homeProgressLabel}>YOUR DAILY RHYTHM · VIEW PROGRESS ↗</Text>
+            <Text style={s.homeProgressValue}>{done} of {tasks.length} complete</Text>
+            <View style={s.progressTrack}>
+              <View style={[s.progressFill,{width:(tasks.length?done/tasks.length*100:0)+'%'}]}/>
+            </View>
+          </Pressable>
+        </LinearGradient>
+      </ImageBackground>
+    </View>
+  );
 
   const renderFocus=()=> <View style={{flex:1,backgroundColor:C.night}}><ImageBackground source={{uri:FOREST}} resizeMode="cover" style={s.focusPhoto} imageStyle={{opacity:.55}}><LinearGradient colors={['rgba(15,16,14,.45)','rgba(15,16,14,.5)','rgba(15,16,14,.7)']} style={s.focusShade}><View style={s.focusHeader}><Pressable onPress={()=>setTab('Home')} style={s.glassButton}><Ionicons name="close" size={19} color={C.white}/></Pressable><View style={{flexDirection:'row',gap:8}}><Pressable onPress={()=>setTab('History')} style={s.glassButton}><Ionicons name="time-outline" size={18} color={C.white}/></Pressable><Pressable onPress={()=>setTab('Settings')} style={s.glassButton}><Ionicons name="settings-outline" size={18} color={C.white}/></Pressable></View></View><View style={s.timerArea}><View style={s.timerRing}><View style={s.timerArc}/><Text style={s.timerMode}>{mode}</Text><Text style={s.timerDigits}>{clock}</Text><Text style={s.timerCaption}>{running?'Stay in the moment':'Work'}</Text></View><Pressable onPress={toggleTimer} style={s.timerPlay}><Ionicons name={running?'pause':'play'} size={24} color={C.ink}/></Pressable></View><View style={s.focusModes}>{[{name:'Break',icon:'timer-outline'},{name:'Focus',icon:'flame-outline'},{name:'Music',icon:'musical-notes-outline'}].map(m=><Pressable key={m.name} onPress={()=>{setMode(m.name);if(m.name!=='Music'){cancelFocusNotifications();setRunning(false);setTimerEndsAt(null);setActiveSession(null);const n=m.name==='Break'?breakLength:focusLength;setSeconds(n*60);completedTimerRef.current=false;}}} style={s.focusModeButton}><Ionicons name={m.icon} size={18} color={C.white}/><Text style={s.focusModeText}>{m.name}</Text></Pressable>)}</View><Pressable onPress={()=>setTaskPickerVisible(true)} style={s.focusTaskPicker}><Ionicons name="checkbox-outline" size={15} color={C.white}/><Text numberOfLines={1} style={s.focusTaskPickerText}>{tasks.find(task=>task.id===focusTaskId)?.title||'Link this session to a task'}</Text><Ionicons name="chevron-down" size={14} color={C.darkMuted}/></Pressable></LinearGradient></ImageBackground></View>;
 
