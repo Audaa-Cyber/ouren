@@ -37,7 +37,8 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Daily recurring tasks reset when the local calendar day changes; weekly tasks reset at the local Monday week boundary.
 - Daily focus goals with progress feedback and a consecutive-day focus streak.
 - Due dates on tasks, with date-aware Today/Upcoming filters and calendar-day task lists.
-- Task search across titles, details, categories and priorities.
+- Task search across titles, details, categories, priorities, due dates and recurrence.
+- Active task lists prioritize overdue and high-priority work; completed tasks are ordered by most recent completion.
 - After a linked focus session, an optional prompt lets the user mark that task complete without completing it automatically.
 - Local JSON backup export and validated backup restore, including tasks, preferences, timer state and focus history.
 - Monthly calendar navigation and day selection.
