@@ -29,6 +29,8 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Editable tasks, including title, category, priority, estimate, schedule and recurrence.
 - Custom focus and break durations, plus scheduled local notifications when a timer ends; disabling notifications cancels pending focus alerts.
 - Export and restore preserve configured focus and break durations.
+- Daily focus goals with progress feedback and a consecutive-day focus streak.
+- Due dates on tasks, with date-aware Today/Upcoming filters and calendar-day task lists.
 - Local JSON backup export and validated backup restore, including tasks, preferences, timer state and focus history.
 - Monthly calendar navigation and day selection.
 - Profile editing, light/dark appearance, notification preference, and local-data reset.
