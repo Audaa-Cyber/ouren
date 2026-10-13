@@ -43,6 +43,10 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - Manrope font from the public Expo Google Fonts package.
 - Local persistence using AsyncStorage.
 
+## Automated validation
+
+GitHub Actions runs `npx expo-doctor` and `npx expo export --platform android` on pushes to `main`, pull requests targeting `main`, and manual dispatches. A green workflow run is required before treating the Android bundle as verified.
+
 ## Local-first privacy model
 
 The profile setup is **not a server login**. There is no authentication backend or account creation request. The name, optional email label, tasks, timer state, and preferences are stored in AsyncStorage on the device. After the first setup, the profile screen is not shown again unless local data is reset or the app's storage is cleared.
