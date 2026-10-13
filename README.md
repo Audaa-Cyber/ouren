@@ -18,7 +18,8 @@ Scan the QR code with Expo Go, or press `a` / `i` to open an installed simulator
 - First-launch profile setup, shown once on this device.
 - Home dashboard with daily task checklist and completion progress.
 - Create tasks and mark tasks complete.
-- Focus timer with start, pause, reset, focus/break modes, configurable duration, and deadline-based recovery after backgrounding or restarting the app.
+- Focus timer with start, pause, focus/break modes, configurable duration, and deadline-based recovery after backgrounding or restarting the app.
+- Local focus session history with completed-session totals, today’s focus time, and a clear-history control.
 - Monthly calendar navigation and day selection.
 - Profile editing, light/dark appearance, notification preference, and local-data reset.
 - Sleep scheduling/protection features are intentionally excluded.
