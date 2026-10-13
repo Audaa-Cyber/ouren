@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, ImageBackground, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 
 const STORAGE = 'ouren.local.v2';
+const LOGO_URL = 'https://raw.githubusercontent.com/Audaa-Cyber/ouren/main/assets/ouren-logo.png';
 const C = { paper:'#F2EEE7', white:'#F8F5EF', ink:'#20201D', muted:'#89867E', line:'#DED9D0', sand:'#D5CCBE', night:'#191A17', panel:'#282925', darkMuted:'#AAA69C' };
 const MOUNTAIN = 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1100&q=88';
 const PLANT = 'https://images.unsplash.com/photo-1497250681960-ef046c08a56e?w=900&q=88';
@@ -19,10 +20,13 @@ const initialTasks = [
 ];
 
 function LogoMark({ size=25, color=C.ink }) {
+  const [imageFailed, setImageFailed] = useState(false);
   return <View style={{width:size,height:size,alignItems:'center',justifyContent:'center'}}>
-    <View style={{width:size*.84,height:size*.84,borderWidth:size*.17,borderColor:color,borderRadius:size*.26,transform:[{rotate:'30deg'}],alignItems:'center',justifyContent:'center'}}>
-      <Text style={{fontSize:size*.48,lineHeight:size*.52,color,fontFamily:'Manrope_700Bold',textAlign:'center'}}>✦</Text>
-    </View>
+    {!imageFailed
+      ? <Image source={{uri:LOGO_URL}} onError={()=>setImageFailed(true)} style={{width:size,height:size,tintColor:color}} resizeMode="contain" />
+      : <View style={{width:size*.84,height:size*.84,borderWidth:size*.17,borderColor:color,borderRadius:size*.26,transform:[{rotate:'30deg'}],alignItems:'center',justifyContent:'center'}}>
+          <Text style={{fontSize:size*.48,lineHeight:size*.52,color,fontFamily:'Manrope_700Bold',textAlign:'center'}}>✦</Text>
+        </View>}
   </View>;
 }
 function Wordmark({ color=C.ink, size=18, mark=20 }) {
