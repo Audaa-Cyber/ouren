@@ -49,7 +49,7 @@ function TaskItem({ task, onToggle, dark=false, showTime=false, onDelete, onEdit
     <View style={[s.taskCheck,task.done&&{backgroundColor:color,borderColor:color}]}>{task.done&&<Ionicons name="checkmark" size={12} color={dark?C.ink:C.white}/>}</View>
     <View style={{flex:1}}>
       <Text style={[s.taskName,{color},task.done&&{textDecorationLine:'line-through',opacity:.58}]}>{task.title}</Text>
-      <Text style={[s.taskMeta,{color:dark?C.darkMuted:C.muted}]}>{task.priority==='High'?'HIGH PRIORITY · ':''}{task.detail}{task.dueDate?' · DUE '+task.dueDate.slice(5).replace('-','/') :''}{task.recurrence&&task.recurrence!=='Never'?' · '+task.recurrence:''}</Text>
+      <Text style={[s.taskMeta,{color:dark?C.darkMuted:C.muted}]}>{task.priority==='High'?'HIGH PRIORITY · ':''}{task.dueDate&&!task.done&&task.dueDate<localDateKey(new Date())?'OVERDUE · ':''}{task.detail}{task.dueDate?' · DUE '+task.dueDate.slice(5).replace('-','/') :''}{task.recurrence&&task.recurrence!=='Never'?' · '+task.recurrence:''}</Text>
     </View>
     {showTime&&!!task.time&&<Text style={[s.taskTime,{color:dark?C.darkMuted:C.muted}]}>{task.time}</Text>}
     {onEdit&&<Pressable onPress={onEdit} hitSlop={8} style={{padding:5}}><Ionicons name="create-outline" size={15} color={dark?C.darkMuted:C.muted}/></Pressable>}
