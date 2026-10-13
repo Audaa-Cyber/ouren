@@ -8,8 +8,8 @@ import { useFonts, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, M
 const STORAGE = 'ouren.local.v2';
 const C = { paper:'#F2EEE7', white:'#F8F5EF', ink:'#20201D', muted:'#89867E', line:'#DED9D0', sand:'#D5CCBE', night:'#191A17', panel:'#282925', darkMuted:'#AAA69C' };
 const MOUNTAIN = 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1100&q=88';
-const PLANT = 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=900&q=88';
-const STONES = 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=900&q=88';
+const PLANT = 'https://images.unsplash.com/photo-1497250681960-ef046c08a56e?w=900&q=88';
+const STONES = 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=900&q=88';
 const FOREST = 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1100&q=88';
 const initialTasks = [
   { id:'a', title:'Deep work session', detail:'2h · Focus', category:'Focus', time:'9:00 AM', done:true },
@@ -21,7 +21,7 @@ const initialTasks = [
 function LogoMark({ size=25, color=C.ink }) {
   return <View style={{width:size,height:size,alignItems:'center',justifyContent:'center'}}>
     <View style={{width:size*.84,height:size*.84,borderWidth:size*.17,borderColor:color,borderRadius:size*.26,transform:[{rotate:'30deg'}],alignItems:'center',justifyContent:'center'}}>
-      <View style={{width:size*.31,height:size*.31,backgroundColor:color,transform:[{rotate:'-30deg'}]}} />
+      <Text style={{fontSize:size*.48,lineHeight:size*.52,color,fontFamily:'Manrope_700Bold',textAlign:'center'}}>✦</Text>
     </View>
   </View>;
 }
